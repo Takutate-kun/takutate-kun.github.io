@@ -80,7 +80,7 @@
 <script>
 const ST = ['join','dayof','later','no'];
 const BTN = { join:['参加',''], dayof:['当日補欠OK','直前の連絡でも行ける'], later:['2日前に回答','締切までに連絡'], no:['不参加',''] };
-let state = null, eventId = null, busy = false;
+let state = null, eventId = null, groupKey = null, busy = false;
 const $app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -89,6 +89,7 @@ function fail(msg){ $app.innerHTML = '<div class="card"><b>' + esc(msg) + '</b><
 async function api(body){
   body.idToken = liff.getIDToken();
   body.eventId = eventId;
+  if (!eventId && groupKey) body.groupKey = groupKey;
   const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });  // text/plain で送る（事前確認なし）
   return res.json();
 }
@@ -109,7 +110,7 @@ function evList(d){
 async function switchTo(id){
   if (busy || id === eventId) return;
   busy = true; eventId = id;
-  try { history.replaceState(null, '', '?e=' + encodeURIComponent(id)); } catch (e) {}
+  try { history.replaceState(null, '', '?e=' + encodeURIComponent(id) + (groupKey ? '&g=' + encodeURIComponent(groupKey) : '')); } catch (e) {}
   $app.style.opacity = .5;
   try {
     const r = await api({ api:'get' });
@@ -182,10 +183,13 @@ async function answer(st){
 (async function main(){
   try {
     await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
-    eventId = new URLSearchParams(location.search).get('e');
-    if (!eventId) return fail('日程が指定されていません。グループの日程カードの「回答する」から開いてください。');
+    const q = new URLSearchParams(location.search);
+    eventId = q.get('e'); groupKey = q.get('g');
+    if (!eventId && !groupKey) return fail('日程が指定されていません。グループの日程カードの「回答する」か、アナウンスのリンクから開いてください。');
     const r = await api({ api:'get' });
     if (!r.ok) return fail(r.error);
+    if (r.empty) return fail('いま募集中の日程はありません。主催者・管理者が募集を始めると、ここに出ます。');
+    eventId = r.event.id;
     state = r; render();
   } catch (err) {
     fail('読み込みに失敗しました。画面を閉じて、もう一度開いてください。（' + (err && err.message ? err.message : err) + '）');

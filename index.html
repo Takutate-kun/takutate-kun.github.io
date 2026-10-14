@@ -74,6 +74,11 @@
   .ev .s{grid-column:1 / -1;font-size:12px;color:var(--muted)}
   .adm{border:2px solid var(--later)}
   .adm h2{color:var(--later)}
+  .target{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;background:var(--later-bg);border-radius:10px;padding:10px 12px;margin:0 0 10px}
+  .target .n{display:inline-block;background:var(--later);color:var(--card);border-radius:4px;padding:0 8px;font-weight:700;font-size:13px}
+  .target b{font-size:16px}
+  .target span.s{font-size:12px;color:var(--muted);width:100%}
+  .mem-h{font-size:13px;font-weight:700;color:var(--later);margin:14px 0 0}
   .warn{background:var(--dayof-bg);color:var(--dayof);font-weight:700;border-radius:10px;padding:8px 12px;margin:0 0 10px;font-size:14px}
   .acts{display:flex;flex-direction:column;gap:8px}
   .acts button{font:inherit;font-weight:700;font-size:15px;padding:12px;border-radius:12px;border:2px solid var(--later);background:transparent;color:var(--later);cursor:pointer;text-align:left}
@@ -182,16 +187,20 @@ const ACTS = {
 function adminMenu(d){
   const e = d.event, v = d.adminView;
   let h = '<div class="card adm"><h2>管理者メニュー（主催者・管理者にだけ見えています）</h2>';
+  const others = (d.others || []).some(x => x.id !== e.id);
+  h += '<div class="target"><span class="n">日程' + e.no + '</span><b>' + esc(e.when) + '</b>' + (e.place ? '<span>' + esc(e.place) + '</span>' : '')
+     + '<span class="s">このメニューの操作は、すべて「日程' + e.no + '」が対象です。' + (others ? '別の日程は、上の「このグループの日程」で切り替えてください。' : '') + '</span></div>';
   if (v.overdue) h += '<p class="warn">締切（' + esc(e.deadline) + '）を過ぎています。' + (v.later ? '「2日前に回答」が' + v.later + '人います。' : '') + '</p>';
   const acts = [];
   if (e.phase === 'open') acts.push('close');
   if (e.phase !== 'closed' && v.later) acts.push('remind');
   if (e.phase !== 'closed') acts.push('announce');
   acts.push('final');
-  h += '<div class="acts">' + acts.map(a => '<button data-act="' + a + '">' + ACTS[a][1] + (a === 'remind' ? '（' + v.later + '人）' : '') + '<small>' + ACTS[a][2] + '</small></button>').join('') + '</div>';
+  h += '<div class="acts">' + acts.map(a => '<button data-act="' + a + '">日程' + e.no + '：' + ACTS[a][1] + (a === 'remind' ? '（' + v.later + '人）' : '') + '<small>' + ACTS[a][2] + '</small></button>').join('') + '</div>';
   if (admMsg) h += '<div class="toast' + (admMsg.err ? ' err' : '') + '">' + esc(admMsg.text) + '</div>';
   h += '<p class="note">下の一覧で回答を変えても、グループには流れません（人数発表のあとに参加者が増減する変更だけ、グループにお知らせが出ます）。</p>';
   const opts = [['', '未回答'], ['join', '参加'], ['dayof', '当日補欠OK'], ['later', '2日前に回答'], ['no', '不参加']];
+  h += '<p class="mem-h">日程' + e.no + '（' + esc(e.when) + '）のメンバーの回答</p>';
   h += '<div class="mem">' + v.members.map(m => {
     const cur = m.status === 'wish' ? 'wish' : m.status;
     const list = opts.filter(o => o[0] !== 'later' || e.phase === 'open' || cur === 'later');
@@ -213,7 +222,7 @@ async function sendToGroup(text){
 async function adminAct(act){
   if (busy) return;
   const e = state.event;
-  if (!window.confirm(ACTS[act][1] + '：' + ACTS[act][2] + '。よろしいですか？')) return;
+  if (!window.confirm('日程' + e.no + '（' + e.when + '）：' + ACTS[act][1] + '\n' + ACTS[act][2] + '。よろしいですか？')) return;
   try { await sendToGroup('【卓立てくん】日程' + e.no + '：' + ACTS[act][0] + ' #' + e.id); }
   catch (err) { render('送信できませんでした。もう一度お試しください。', true); }
 }

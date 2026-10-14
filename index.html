@@ -65,6 +65,13 @@
   h2{font-size:13px;color:var(--muted);margin:0 0 8px;letter-spacing:.05em}
   .center{text-align:center;color:var(--muted);padding:40px 0}
   .admin{font-size:13px;color:var(--muted)}
+  .evs{display:flex;flex-direction:column;gap:8px}
+  .ev{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;
+      background:var(--bg);border:2px solid transparent;border-radius:12px;padding:10px 12px;cursor:pointer}
+  .ev.cur{border-color:var(--felt);background:var(--card)}
+  .ev .t{font-weight:700;font-size:15px;min-width:0}
+  .ev .t .n{display:inline-block;background:var(--felt);color:var(--felt-ink);border-radius:4px;padding:0 6px;font-size:12px;margin-right:6px}
+  .ev .s{grid-column:1 / -1;font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -86,6 +93,32 @@ async function api(body){
   return res.json();
 }
 
+function evList(d){
+  const list = d.others || [];
+  if (!list.length) return '';
+  let h = '<div class="card"><h2>このグループの日程（押すと切り替わります）</h2><div class="evs">';
+  list.forEach(x => {
+    h += '<button class="ev' + (x.id === d.event.id ? ' cur' : '') + '" data-id="' + esc(x.id) + '">'
+       + '<span class="t"><span class="n">日程' + x.no + '</span>' + esc(x.when) + '</span>'
+       + '<span class="pill p-' + (x.status || 'none') + '">' + esc(x.label) + '</span>'
+       + '<span class="s">' + esc(x.place || '場所未定') + '・' + esc(x.phaseLabel) + '・' + esc(x.verdict) + '</span></button>';
+  });
+  return h + '</div></div>';
+}
+
+async function switchTo(id){
+  if (busy || id === eventId) return;
+  busy = true; eventId = id;
+  try { history.replaceState(null, '', '?e=' + encodeURIComponent(id)); } catch (e) {}
+  $app.style.opacity = .5;
+  try {
+    const r = await api({ api:'get' });
+    busy = false; $app.style.opacity = 1;
+    if (!r.ok) return fail(r.error);
+    state = r; render(); window.scrollTo(0, 0);
+  } catch (err) { busy = false; $app.style.opacity = 1; render('読み込めませんでした。もう一度押してください。', true); }
+}
+
 function render(toast, isErr){
   const d = state, e = d.event, me = d.me;
   const lockLater = e.phase !== 'open';
@@ -94,6 +127,7 @@ function render(toast, isErr){
      + '<h1>' + esc(e.when) + '</h1>'
      + '<div class="sub">' + (e.deadline ? '回答の締切：' + esc(e.deadline) : '') + '</div>'
      + '<span class="phase">' + esc(e.phaseLabel) + (e.late ? '・直前ルール中' : '') + '</span></div>';
+  if ((d.others || []).some(x => x.id !== e.id)) h += evList(d);   // ほかにも日程があるときだけ一覧を出す
 
   h += '<div class="card"><h2>あなたの回答</h2><div class="mine"><b>' + esc(me.name) + 'さん</b>'
      + '<span class="pill p-' + (me.status || 'none') + '">' + esc(me.label) + '</span></div>';
@@ -123,6 +157,7 @@ function render(toast, isErr){
   if (me.admin) h += '<p class="admin">主催者・管理者の操作（締切・人数発表・メンバー変更など）は、これまでどおりグループで送ってください。</p>';
   $app.innerHTML = h;
   $app.querySelectorAll('.btns button').forEach(b => b.addEventListener('click', () => answer(b.dataset.st)));
+  $app.querySelectorAll('.ev').forEach(b => b.addEventListener('click', () => switchTo(b.dataset.id)));
 }
 
 async function answer(st){

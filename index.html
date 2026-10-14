@@ -72,6 +72,15 @@
   .ev .t{font-weight:700;font-size:15px;min-width:0}
   .ev .t .n{display:inline-block;background:var(--felt);color:var(--felt-ink);border-radius:4px;padding:0 6px;font-size:12px;margin-right:6px}
   .ev .s{grid-column:1 / -1;font-size:12px;color:var(--muted)}
+  .adm{border:2px solid var(--later)}
+  .adm h2{color:var(--later)}
+  .warn{background:var(--dayof-bg);color:var(--dayof);font-weight:700;border-radius:10px;padding:8px 12px;margin:0 0 10px;font-size:14px}
+  .acts{display:flex;flex-direction:column;gap:8px}
+  .acts button{font:inherit;font-weight:700;font-size:15px;padding:12px;border-radius:12px;border:2px solid var(--later);background:transparent;color:var(--later);cursor:pointer;text-align:left}
+  .acts button small{display:block;font-weight:400;font-size:11px;opacity:.85}
+  .mem{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;margin-top:12px}
+  .mem .nm{font-size:14px;min-width:0;word-break:break-word}
+  .mem select{font:inherit;font-size:14px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink)}
 </style>
 </head>
 <body>
@@ -80,7 +89,7 @@
 <script>
 const ST = ['join','dayof','later','no'];
 const BTN = { join:['参加',''], dayof:['当日補欠OK','直前の連絡でも行ける'], later:['2日前に回答','締切までに連絡'], no:['不参加',''] };
-let state = null, eventId = null, groupKey = null, busy = false;
+let state = null, eventId = null, groupKey = null, busy = false, admMsg = null;
 const $app = document.getElementById('app');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -109,7 +118,7 @@ function evList(d){
 
 async function switchTo(id){
   if (busy || id === eventId) return;
-  busy = true; eventId = id;
+  busy = true; eventId = id; admMsg = null;
   try { history.replaceState(null, '', '?e=' + encodeURIComponent(id) + (groupKey ? '&g=' + encodeURIComponent(groupKey) : '')); } catch (e) {}
   $app.style.opacity = .5;
   try {
@@ -155,10 +164,75 @@ function render(toast, isErr){
   });
   h += '</div></div>';
 
-  if (me.admin) h += '<p class="admin">主催者・管理者の操作（締切・人数発表・メンバー変更など）は、これまでどおりグループで送ってください。</p>';
+  if (me.admin && d.adminView) h += adminMenu(d);
   $app.innerHTML = h;
   $app.querySelectorAll('.btns button').forEach(b => b.addEventListener('click', () => answer(b.dataset.st)));
   $app.querySelectorAll('.ev').forEach(b => b.addEventListener('click', () => switchTo(b.dataset.id)));
+  $app.querySelectorAll('.acts button').forEach(b => b.addEventListener('click', () => adminAct(b.dataset.act)));
+  $app.querySelectorAll('.mem select').forEach(sel => sel.addEventListener('change', () => adminSet(sel.dataset.id, sel.value, sel)));
+}
+
+// ---- 管理者メニュー（主催者・管理者にだけ表示） ----
+const ACTS = {
+  close:   ['締切', '回答を締め切る', '締め切ったことがグループに表示されます'],
+  remind:  ['催促', '「2日前に回答」の人に催促する', 'その人たちにメンションした催促がグループに表示されます'],
+  announce:['人数発表', '人数を発表する', '返事のない人は不参加になり、結果がグループに表示されます'],
+  final:   ['最終メンバー', '最終メンバーを出す', '確定した参加者の一覧がグループに表示されます']
+};
+function adminMenu(d){
+  const e = d.event, v = d.adminView;
+  let h = '<div class="card adm"><h2>管理者メニュー（主催者・管理者にだけ見えています）</h2>';
+  if (v.overdue) h += '<p class="warn">締切（' + esc(e.deadline) + '）を過ぎています。' + (v.later ? '「2日前に回答」が' + v.later + '人います。' : '') + '</p>';
+  const acts = [];
+  if (e.phase === 'open') acts.push('close');
+  if (e.phase !== 'closed' && v.later) acts.push('remind');
+  if (e.phase !== 'closed') acts.push('announce');
+  acts.push('final');
+  h += '<div class="acts">' + acts.map(a => '<button data-act="' + a + '">' + ACTS[a][1] + (a === 'remind' ? '（' + v.later + '人）' : '') + '<small>' + ACTS[a][2] + '</small></button>').join('') + '</div>';
+  if (admMsg) h += '<div class="toast' + (admMsg.err ? ' err' : '') + '">' + esc(admMsg.text) + '</div>';
+  h += '<p class="note">下の一覧で回答を変えても、グループには流れません（人数発表のあとに参加者が増減する変更だけ、グループにお知らせが出ます）。</p>';
+  const opts = [['', '未回答'], ['join', '参加'], ['dayof', '当日補欠OK'], ['later', '2日前に回答'], ['no', '不参加']];
+  h += '<div class="mem">' + v.members.map(m => {
+    const cur = m.status === 'wish' ? 'wish' : m.status;
+    const list = opts.filter(o => o[0] !== 'later' || e.phase === 'open' || cur === 'later');
+    if (cur === 'wish') list.splice(1, 0, ['wish', '参加希望（未確定）']);
+    return '<span class="nm">' + esc(m.name) + '</span><select data-id="' + esc(m.id) + '" aria-label="' + esc(m.name) + 'さんの回答"' + (busy ? ' disabled' : '') + '>'
+      + list.map(o => '<option value="' + o[0] + '"' + (o[0] === cur ? ' selected' : '') + (o[0] === '' || o[0] === 'wish' ? ' disabled' : '') + '>' + o[1] + '</option>').join('') + '</select>';
+  }).join('') + '</div>';
+  if (!v.members.length) h += '<p class="note">まだ回答した人がいません。</p>';
+  return h + '</div>';
+}
+
+async function sendToGroup(text){
+  if (!liff.isInClient()) { render('この操作はLINEアプリの中から行ってください。グループに「' + text + '」と送っても同じことができます。', true); return false; }
+  await liff.sendMessages([{ type:'text', text }]);
+  liff.closeWindow();
+  return true;
+}
+
+async function adminAct(act){
+  if (busy) return;
+  const e = state.event;
+  if (!window.confirm(ACTS[act][1] + '：' + ACTS[act][2] + '。よろしいですか？')) return;
+  try { await sendToGroup('【卓立てくん】日程' + e.no + '：' + ACTS[act][0] + ' #' + e.id); }
+  catch (err) { render('送信できませんでした。もう一度お試しください。', true); }
+}
+
+async function adminSet(id, st, sel){
+  if (busy) return;
+  const msg = (t, err) => { admMsg = { text: t, err: !!err }; render(); };
+  busy = true; msg('変更しています…');
+  try {
+    const r = await api({ api:'set', target:id, status:st });
+    busy = false;
+    if (!r.ok) { msg(r.error, true); return; }
+    if (r.viaChat) {
+      if (!window.confirm('人数発表のあとの変更なので、グループにお知らせが出ます。よろしいですか？')) { msg('変更をやめました。'); return; }
+      await sendToGroup(r.message);
+      return;
+    }
+    state = r; msg(r.done);
+  } catch (err) { busy = false; msg('変更できませんでした。もう一度お試しください。', true); }
 }
 
 async function answer(st){

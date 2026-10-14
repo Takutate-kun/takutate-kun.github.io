@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>卓立てくん 回答</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+  // =========================================================
+  // ↓↓↓ 次の1行だけ書き換えてください ↓↓↓
+  // ' ' の中を、Google Apps Script の「ウェブアプリのURL」（…/exec で終わるもの）にする
+  // =========================================================
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxFBJQxZJoTUfFvf8ur4b22lO0YbOAYVY1xj0pidnRwzMhKf7JbNJEUioRpw9-KzOUyuA/exec';
+  const LIFF_ID = '2012021643-IdHGgAz7';
+</script>
+<style>
+  :root{
+    --bg:#eef1ec; --card:#ffffff; --ink:#1d2420; --muted:#5f6b64; --line:#d6ddd7;
+    --felt:#1e5a43; --felt-ink:#f3f0e4; --tile:#f6f1e1; --tile-edge:#c9bf9f;
+    --join:#1f7a4f; --dayof:#a86a12; --wish:#7a4fa8; --later:#2f5f9e; --no:#c8372d;
+    --join-bg:#e3f2ea; --dayof-bg:#fbefd9; --wish-bg:#efe6f8; --later-bg:#e3ebf7; --no-bg:#f9e2df;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#121614; --card:#1b211e; --ink:#e7ece8; --muted:#9aa69f; --line:#2f3934;
+      --felt:#18473a; --felt-ink:#f0ecdd; --tile:#ece5cf; --tile-edge:#a99f80;
+      --join:#55c48c; --dayof:#e0a94e; --wish:#b58be0; --later:#7ba6e6; --no:#ea6a5e;
+      --join-bg:#1e3a2c; --dayof-bg:#3a2e17; --wish-bg:#2e2340; --later-bg:#1d2b40; --no-bg:#3d201d;
+    }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif;font-size:15px;line-height:1.6}
+  .wrap{max-width:520px;margin:0 auto;padding:16px max(16px,env(safe-area-inset-left)) calc(24px + env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))}
+  .head{background:var(--felt);color:var(--felt-ink);border-radius:16px;padding:14px 16px}
+  .head .no{display:inline-block;background:var(--tile);color:#1d2420;border-radius:4px;padding:0 8px;font-weight:700;font-size:13px;margin-right:6px}
+  .head h1{margin:6px 0 2px;font-size:19px;line-height:1.35}
+  .head .sub{font-size:13px;opacity:.9}
+  .phase{display:inline-block;margin-top:8px;font-size:12px;font-weight:700;padding:2px 10px;border-radius:99px;background:rgba(255,255,255,.18)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-top:14px}
+  .verdict{font-size:18px;font-weight:700}
+  .mine{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .mine b{font-size:16px}
+  .pill{display:inline-block;font-size:13px;font-weight:700;padding:2px 10px;border-radius:99px}
+  .p-join{background:var(--join-bg);color:var(--join)} .p-dayof{background:var(--dayof-bg);color:var(--dayof)}
+  .p-wish{background:var(--wish-bg);color:var(--wish)} .p-later{background:var(--later-bg);color:var(--later)}
+  .p-no{background:var(--no-bg);color:var(--no)} .p-none{background:var(--bg);color:var(--muted)}
+  .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .btns button{font:inherit;font-size:16px;font-weight:700;padding:14px 8px;border-radius:12px;border:2px solid currentColor;background:transparent;cursor:pointer;line-height:1.3}
+  .btns button small{display:block;font-size:11px;font-weight:400;opacity:.85}
+  .btns button[data-st="join"]{color:var(--join)} .btns button[data-st="dayof"]{color:var(--dayof)}
+  .btns button[data-st="later"]{color:var(--later)} .btns button[data-st="no"]{color:var(--no)}
+  .btns button.on{color:var(--card)!important}
+  .btns button.on[data-st="join"]{background:var(--join);border-color:var(--join)}
+  .btns button.on[data-st="dayof"]{background:var(--dayof);border-color:var(--dayof)}
+  .btns button.on[data-st="later"]{background:var(--later);border-color:var(--later)}
+  .btns button.on[data-st="no"]{background:var(--no);border-color:var(--no)}
+  .btns button:disabled{opacity:.45}
+  .note{font-size:13px;color:var(--muted);margin:10px 0 0}
+  .toast{margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--join-bg);color:var(--join);font-weight:700}
+  .toast.err{background:var(--no-bg);color:var(--no)}
+  .lists{display:flex;flex-direction:column;gap:8px}
+  .row{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline}
+  .row .names{font-size:14px;min-width:0;word-break:break-word}
+  h2{font-size:13px;color:var(--muted);margin:0 0 8px;letter-spacing:.05em}
+  .center{text-align:center;color:var(--muted);padding:40px 0}
+  .admin{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="center">読み込み中…</div></div>
+
+<script>
+const ST = ['join','dayof','later','no'];
+const BTN = { join:['参加',''], dayof:['当日補欠OK','直前の連絡でも行ける'], later:['2日前に回答','締切までに連絡'], no:['不参加',''] };
+let state = null, eventId = null, busy = false;
+const $app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fail(msg){ $app.innerHTML = '<div class="card"><b>' + esc(msg) + '</b></div>'; }
+
+async function api(body){
+  body.idToken = liff.getIDToken();
+  body.eventId = eventId;
+  const res = await fetch(API_URL, { method:'POST', body: JSON.stringify(body) });  // text/plain で送る（事前確認なし）
+  return res.json();
+}
+
+function render(toast, isErr){
+  const d = state, e = d.event, me = d.me;
+  const lockLater = e.phase !== 'open';
+  let h = '';
+  h += '<div class="head"><span class="no">日程' + e.no + '</span><span class="sub">' + esc(e.place || '場所未定') + '</span>'
+     + '<h1>' + esc(e.when) + '</h1>'
+     + '<div class="sub">' + (e.deadline ? '回答の締切：' + esc(e.deadline) : '') + '</div>'
+     + '<span class="phase">' + esc(e.phaseLabel) + (e.late ? '・直前ルール中' : '') + '</span></div>';
+
+  h += '<div class="card"><h2>あなたの回答</h2><div class="mine"><b>' + esc(me.name) + 'さん</b>'
+     + '<span class="pill p-' + (me.status || 'none') + '">' + esc(me.label) + '</span></div>';
+  h += '<div class="btns">' + ST.map(st => {
+         const dis = (st === 'later' && lockLater) || busy;
+         return '<button data-st="' + st + '" class="' + (me.status === st ? 'on' : '') + '"' + (dis ? ' disabled' : '') + '>'
+              + BTN[st][0] + (BTN[st][1] ? '<small>' + BTN[st][1] + '</small>' : '') + '</button>';
+       }).join('') + '</div>';
+  if (toast) h += '<div class="toast' + (isErr ? ' err' : '') + '">' + esc(toast) + '</div>';
+  if (e.phase === 'closed') h += '<p class="note">人数発表が済んでいるため、変更するとグループにお知らせが流れます。</p>';
+  else if (e.late && !me.admin) h += '<p class="note">開始直前のため、「参加」は参加希望として受け付け、主催者・管理者が確定します。確定の連絡が来るまでは会場に向かわないでください。</p>';
+  else h += '<p class="note">回答しても、グループにはメッセージは流れません。</p>';
+  h += '</div>';
+
+  h += '<div class="card"><h2>いまの状況</h2><div class="verdict">' + esc(d.verdict) + '</div></div>';
+
+  h += '<div class="card"><h2>回答した人</h2><div class="lists">';
+  ['join','dayof','wish','later','no'].forEach(st => {
+    const names = d.lists[st] || [];
+    if (!names.length && (st === 'wish' || st === 'later')) return;
+    const shown = st === 'dayof' ? names.map((n,i) => '①②③④⑤⑥⑦⑧⑨⑩'[i] + n) : names;
+    h += '<div class="row"><span class="pill p-' + st + '">' + esc(d.labels[st]) + ' ' + names.length + '</span>'
+       + '<span class="names">' + (shown.length ? shown.map(esc).join('、') : '—') + '</span></div>';
+  });
+  h += '</div></div>';
+
+  if (me.admin) h += '<p class="admin">主催者・管理者の操作（締切・人数発表・メンバー変更など）は、これまでどおりグループで送ってください。</p>';
+  $app.innerHTML = h;
+  $app.querySelectorAll('.btns button').forEach(b => b.addEventListener('click', () => answer(b.dataset.st)));
+}
+
+async function answer(st){
+  if (busy) return;
+  busy = true; render('送信中…');
+  try {
+    const r = await api({ api:'answer', status: st });
+    if (!r.ok) { busy = false; render(r.error, true); return; }
+    if (r.viaChat) {
+      // みんなに関係する回答は、本人の発言としてグループに送る（ボットが返事をする）
+      if (!liff.isInClient()) { busy = false; render('この回答はLINEアプリの中から送る必要があります。グループに「' + r.message + '」と送ってください。', true); return; }
+      await liff.sendMessages([{ type:'text', text: r.message }]);
+      liff.closeWindow();
+      return;
+    }
+    state = r; busy = false; render(r.done);
+  } catch (err) {
+    busy = false; render('送信できませんでした。通信状態を確認して、もう一度押してください。', true);
+  }
+}
+
+(async function main(){
+  try {
+    await liff.init({ liffId: LIFF_ID, withLoginOnExternalBrowser: true });
+    eventId = new URLSearchParams(location.search).get('e');
+    if (!eventId) return fail('日程が指定されていません。グループの日程カードの「回答する」から開いてください。');
+    const r = await api({ api:'get' });
+    if (!r.ok) return fail(r.error);
+    state = r; render();
+  } catch (err) {
+    fail('読み込みに失敗しました。画面を閉じて、もう一度開いてください。（' + (err && err.message ? err.message : err) + '）');
+  }
+})();
+</script>
+</body>
+</html>

@@ -74,6 +74,15 @@
   .ev .s{grid-column:1 / -1;font-size:12px;color:var(--muted)}
   .adm{border:2px solid var(--later)}
   .adm h2{color:var(--later)}
+  details.help{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 16px;margin-top:14px}
+  details.help summary{cursor:pointer;font-weight:700;padding:14px 0;list-style-position:inside}
+  details.help .body{padding:0 0 14px;font-size:14px}
+  details.help h3{font-size:13px;color:var(--muted);margin:14px 0 6px;letter-spacing:.05em}
+  details.help ul{margin:0;padding-left:1.2em}
+  details.help li{margin:4px 0}
+  .cmds{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:baseline}
+  .cmds code{font-family:inherit;font-weight:700;background:var(--bg);border-radius:6px;padding:1px 6px;white-space:nowrap}
+  .cmds span{min-width:0}
   .stick{position:fixed;top:0;left:0;right:0;z-index:10;background:var(--felt);color:var(--felt-ink);box-shadow:0 2px 8px rgba(0,0,0,.18);
          padding:calc(8px + env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left))}
   .stick .in{max-width:520px;margin:0 auto;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:14px}
@@ -184,6 +193,7 @@ function render(toast, isErr){
   h += '</div></div>';
 
   if (me.admin && d.adminView) h += adminMenu(d);
+  h += helpBox(me.admin);
   // スクロールして見出しが隠れたら、上に対象の日程を固定表示する
   h += '<div class="stick" id="stick" hidden><div class="in"><span class="n">日程' + e.no + '</span><b>' + esc(e.when) + '</b>' + (e.place ? '<span>' + esc(e.place) + '</span>' : '') + '</div></div>';
   $app.innerHTML = h;
@@ -192,6 +202,37 @@ function render(toast, isErr){
   $app.querySelectorAll('.ev').forEach(b => b.addEventListener('click', () => switchTo(b.dataset.id)));
   $app.querySelectorAll('.acts button').forEach(b => b.addEventListener('click', () => adminAct(b.dataset.act)));
   $app.querySelectorAll('.mem select').forEach(sel => sel.addEventListener('change', () => adminSet(sel.dataset.id, sel.value, sel)));
+}
+
+// ---- 使い方（見ている本人にだけ表示。グループには何も流れない） ----
+function helpBox(admin){
+  const row = (c, t) => '<code>' + c + '</code><span>' + t + '</span>';
+  let h = '<details class="help"><summary>使い方・送る言葉の一覧</summary><div class="body">';
+  h += '<p class="note" style="margin-top:0">この欄はあなたにだけ見えています。開いてもグループには何も流れません。</p>';
+  h += '<h3>回答のしかた</h3><ul>'
+     + '<li>この画面のボタンで回答します。何度でも変えられ、グループには流れません。</li>'
+     + '<li>「当日補欠OK」は、席が空いたら直前の連絡でも行ける人です。</li>'
+     + '<li>「2日前に回答」は、締切（開始の2日前）までに決める人です。</li>'
+     + '<li>人数発表のあとに回答を変えると、グループにお知らせが出ます。</li>'
+     + '<li>開始3時間前からの「参加」は参加希望になります。確定の連絡が来るまで、会場には向かわないでください。</li></ul>';
+  h += '<h3>誰でも送れる言葉</h3><div class="cmds">'
+     + row('集計', '日程ごとの人数を小さなカードで出す（全員に見えます）')
+     + row('回答リンク', 'このグループの回答画面のリンクを出す')
+     + row('最終メンバー', '参加が確定した人の一覧を出す')
+     + row('管理者一覧', '主催者と管理者を確認する') + '</div>';
+  if (admin) {
+    h += '<h3>主催者・管理者が送れる言葉</h3><div class="cmds">'
+       + row('募集 10/25 19:00 雀荘', '日程を作って募集を始める')
+       + row('締切', '回答を締め切る（約12時間の猶予あり）')
+       + row('人数発表', '返事のない人を不参加にして卓の数を発表')
+       + row('リマインド', '「2日前に回答」の人に催促')
+       + row('募集再開', '締切・人数発表を取り消す')
+       + row('変更 @名前 参加', 'メンションした人の回答を変える')
+       + row('直前ルール 2時間前', '参加希望に切り替わる時刻を変える')
+       + row('管理者追加 @名前', '管理者を増やす（主催者だけ）') + '</div>'
+       + '<p class="note">日程が2つ以上あるときは「締切2」のように番号を付けます。付けなければ、どの日程かをボタンで聞かれます。グループに流したくない操作は、上の管理者メニューからできます。</p>';
+  }
+  return h + '</div></details>';
 }
 
 // ---- 管理者メニュー（主催者・管理者にだけ表示） ----

@@ -182,18 +182,24 @@ function render(toast, isErr){
 
   h += '<div class="card"><h2>いまの状況</h2><div class="verdict">' + esc(d.verdict) + '</div></div>';
 
-  h += '<div class="card"><h2>回答した人</h2><div class="lists">';
+  // 名前を表示しない設定のグループでは、主催者・管理者以外には人数だけを出す
+  const hideNames = d.namesHidden && !me.admin;
+  h += '<div class="card"><h2>' + (hideNames ? '回答した人数' : '回答した人') + '</h2><div class="lists">';
   ['join','dayof','wish','later','no'].forEach(st => {
     const names = d.lists[st] || [];
-    if (!names.length && (st === 'wish' || st === 'later')) return;
-    const shown = st === 'dayof' ? names.map((n,i) => '①②③④⑤⑥⑦⑧⑨⑩'[i] + n) : names;
-    h += '<div class="row"><span class="pill p-' + st + '">' + esc(d.labels[st]) + ' ' + names.length + '</span>'
-       + '<span class="names">' + (shown.length ? shown.map(esc).join('、') : '—') + '</span></div>';
+    const n = d.counts ? (d.counts[st] || 0) : names.length;
+    if (!n && (st === 'wish' || st === 'later')) return;
+    const shown = st === 'dayof' ? names.map((x,i) => '①②③④⑤⑥⑦⑧⑨⑩'[i] + x) : names;
+    h += '<div class="row"><span class="pill p-' + st + '">' + esc(d.labels[st]) + ' ' + n + (hideNames ? '人' : '') + '</span>'
+       + (hideNames ? '' : '<span class="names">' + (shown.length ? shown.map(esc).join('、') : '—') + '</span>') + '</div>';
   });
-  h += '</div></div>';
+  h += '</div>';
+  if (hideNames) h += '<p class="note">このグループでは、誰が参加するかの名前は主催者・管理者だけに表示されます。</p>';
+  else if (d.namesHidden) h += '<p class="note">このグループは名前を表示しない設定です。この名前は主催者・管理者のあなたにだけ見えています。</p>';
+  h += '</div>';
 
   if (me.admin && d.adminView) h += adminMenu(d);
-  h += helpBox(me.admin);
+  h += helpBox(me.admin, d.namesHidden);
   // スクロールして見出しが隠れたら、上に対象の日程を固定表示する
   h += '<div class="stick" id="stick" hidden><div class="in"><span class="n">日程' + e.no + '</span><b>' + esc(e.when) + '</b>' + (e.place ? '<span>' + esc(e.place) + '</span>' : '') + '</div></div>';
   $app.innerHTML = h;
@@ -205,7 +211,7 @@ function render(toast, isErr){
 }
 
 // ---- 使い方（見ている本人にだけ表示。グループには何も流れない） ----
-function helpBox(admin){
+function helpBox(admin, hidden){
   const row = (c, t) => '<code>' + c + '</code><span>' + t + '</span>';
   let h = '<details class="help"><summary>使い方・送る言葉の一覧</summary><div class="body">';
   h += '<p class="note" style="margin-top:0">この欄はあなたにだけ見えています。開いてもグループには何も流れません。</p>';
@@ -218,7 +224,7 @@ function helpBox(admin){
   h += '<h3>誰でも送れる言葉</h3><div class="cmds">'
      + row('集計', '日程ごとの人数を小さなカードで出す（全員に見えます）')
      + row('回答リンク', 'このグループの回答画面のリンクを出す')
-     + row('最終メンバー', '参加が確定した人の一覧を出す')
+     + row('最終メンバー', hidden ? '参加が確定した人数を出す（名前は出ません）' : '参加が確定した人の一覧を出す')
      + row('管理者一覧', '主催者と管理者を確認する') + '</div>';
   if (admin) {
     h += '<h3>主催者・管理者が送れる言葉</h3><div class="cmds">'
@@ -229,7 +235,8 @@ function helpBox(admin){
        + row('募集再開', '締切・人数発表を取り消す')
        + row('変更 @名前 参加', 'メンションした人の回答を変える')
        + row('直前ルール 2時間前', '参加希望に切り替わる時刻を変える')
-       + row('管理者追加 @名前', '管理者を増やす（主催者だけ）') + '</div>'
+       + row('管理者追加 @名前', '管理者を増やす（主催者だけ）')
+       + row('名前表示 オン／オフ', 'カードや最終メンバーに名前を出すか（いまは' + (hidden ? 'オフ：人数だけ' : 'オン') + '）') + '</div>'
        + '<p class="note">日程が2つ以上あるときは「締切2」のように番号を付けます。付けなければ、どの日程かをボタンで聞かれます。グループに流したくない操作は、上の管理者メニューからできます。</p>';
   }
   return h + '</div></details>';
@@ -254,9 +261,11 @@ function adminMenu(d){
   if (e.phase !== 'closed' && v.later) acts.push('remind');
   if (e.phase !== 'closed') acts.push('announce');
   acts.push('final');
+  if (d.namesHidden) ACTS.final[2] = '確定した人数がグループに表示されます（名前は出ません）';
+  else ACTS.final[2] = '確定した参加者の一覧がグループに表示されます';
   h += '<div class="acts">' + acts.map(a => '<button data-act="' + a + '">日程' + e.no + '：' + ACTS[a][1] + (a === 'remind' ? '（' + v.later + '人）' : '') + '<small>' + ACTS[a][2] + '</small></button>').join('') + '</div>';
   if (admMsg) h += '<div class="toast' + (admMsg.err ? ' err' : '') + '">' + esc(admMsg.text) + '</div>';
-  h += '<p class="note">下の一覧で回答を変えても、グループには流れません（人数発表のあとに参加者が増減する変更だけ、グループにお知らせが出ます）。</p>';
+  h += '<p class="note">下の一覧で回答を変えても、グループには流れません' + (d.namesHidden ? '。変えた相手にも通知は届かないので、必要なら個別に伝えてください。' : '（人数発表のあとに参加者が増減する変更だけ、グループにお知らせが出ます）。') + '</p>';
   const opts = [['', '未回答'], ['join', '参加'], ['dayof', '当日補欠OK'], ['later', '2日前に回答'], ['no', '不参加']];
   h += '<p class="mem-h">日程' + e.no + '（' + esc(e.when) + '）のメンバーの回答</p>';
   h += '<div class="mem">' + v.members.map(m => {
